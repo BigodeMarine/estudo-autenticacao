@@ -1,0 +1,22 @@
+[project]
+name = "estudo-autenticacao"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "Edson",email = "cryrider8@gmail.com"}
+]
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi (>=0.132.0,<0.133.0)",
+    "uvicorn (>=0.41.0,<0.42.0)"
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[dependency-groups]
+dev = [
+    "ruff (>=0.15.2,<0.16.0)"
+]
