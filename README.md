@@ -18,12 +18,12 @@ HTTP Basic Authentication
 
 Funcionalidades
 
-✅ Autenticação básica por usuário e senha
-✅ CRUD de tarefas
-✅ Paginação nos endpoints
-✅ Ordenação dinâmica dos resultados
-✅ Respostas padronizadas com mensagens de sucesso
-✅ Tratamento de erros HTTP
+✅ Autenticação básica por usuário e senha  
+✅ CRUD de tarefas  
+✅ Paginação nos endpoints  
+✅ Ordenação dinâmica dos resultados  
+✅ Respostas padronizadas com mensagens de sucesso  
+✅ Tratamento de erros HTTP  
 
 🔐 Autenticação
 
