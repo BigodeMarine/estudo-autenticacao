@@ -3,10 +3,36 @@ from fastapi import FastAPI, Depends, HTTPException, Query, status
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from pydantic import BaseModel, Field
 import secrets
+import sqlite3
 
 app = FastAPI(title="API de Tarefas com Auth + Paginação + Ordenação")
 
 security = HTTPBasic()
+
+DATABASE = "tarefas.db"
+
+def get_connection():
+    conn = sqlite3.connect(DATABASE)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+def criar_tabela():
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS tarefas (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        nome TEXT UNIQUE NOT NULL,
+        descricao TEXT NOT NULL,
+        concluida BOOLEAN NOT NULL DEFAULT 0
+    )
+    """)
+
+    conn.commit()
+    conn.close()
+
+criar_tabela()
 
 USERS_DB = {
     "edson": "123",
@@ -27,12 +53,6 @@ class TarefaResponse(BaseModel):
 class TarefaCreate(BaseModel):
     nome: str = Field(min_length=1, max_length=80)
     descricao: str = Field(min_length=1, max_length=200)
-
-tarefas: List[Tarefa] = [
-    Tarefa(nome="Comprar coxinha", descricao="Ir na padaria", concluida=False),
-    Tarefa(nome="Comprar livro", descricao="Ir na amazon", concluida=False),
-    Tarefa(nome="Comprar jogo", descricao="Ir na steam", concluida=False),
-]
 
 def validar_credenciais(credentials: HTTPBasicCredentials) -> str:
     username = credentials.username
@@ -87,64 +107,104 @@ def aplicar_paginacao(items: List[Tarefa], page: int, size: int) -> List[Tarefa]
 
 @app.get("/listar", response_model=List[Tarefa])
 def listar_tarefas(
-    user: str = Depends(auth_user), 
-    page: int = Query(1, ge=1, description="Página (>=1)"), 
-    size: int = Query(10, ge=1, le=100, description="Itens por página (1..100)"),
-    order_by: Optional[OrderField] = Query(
-        None,
-        description="Campo para ordenar: nome | descricao | concluida",
-    ), 
-    order_dir: OrderDir = Query(
-        "asc",
-        description="Direção da ordenação: asc | desc",
-    ),
+    user: str = Depends(auth_user),
+    page: int = Query(1, ge=1),
+    size: int = Query(10, ge=1, le=100),
 ):
-    
-    items = tarefas.copy()
-    items = aplicar_ordenacao(items, order_by, order_dir)
-    items = aplicar_paginacao(items, page, size)
-    return items
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    offset = (page - 1) * size
+
+    cursor.execute(
+        "SELECT nome, descricao, concluida FROM tarefas LIMIT ? OFFSET ?",
+        (size, offset),
+    )
+
+    rows = cursor.fetchall()
+    conn.close()
+
+    return [Tarefa(**dict(row)) for row in rows]
 
 @app.post("/criar", response_model=TarefaResponse, status_code=201)
-def criar_tarefa(
-    payload: TarefaCreate,
-    user: str = Depends(auth_user),
-):
-    if any(t.nome == payload.nome for t in tarefas):
+def criar_tarefa(payload: TarefaCreate, user: str = Depends(auth_user)):
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    try:
+        cursor.execute(
+            "INSERT INTO tarefas (nome, descricao, concluida) VALUES (?, ?, ?)",
+            (payload.nome, payload.descricao, False),
+        )
+
+        conn.commit()
+
+    except sqlite3.IntegrityError:
+        conn.close()
         raise HTTPException(
             status_code=409,
             detail="Já existe uma tarefa com esse nome.",
         )
 
+    conn.close()
+
     nova = Tarefa(nome=payload.nome, descricao=payload.descricao, concluida=False)
-    tarefas.append(nova)
+
     return {
         "message": "Tarefa criada com sucesso.",
         "data": nova
     }
 
 @app.put("/tarefas/{nome}/concluir", response_model=TarefaResponse)
-def concluir_tarefa(
-    nome: str,
-    user: str = Depends(auth_user),
-):
-    for i, t in enumerate(tarefas):
-        if t.nome == nome:
-            tarefas[i] = t.model_copy(update={"concluida": True})
-            return {
-                "message": "Tarefa atualizada com sucesso.",
-                "data": tarefas[i]
-            }
+def concluir_tarefa(nome: str, user: str = Depends(auth_user)):
 
-    raise HTTPException(status_code=404, detail="Tarefa não encontrada.")
+    conn = get_connection()
+    cursor = conn.cursor()
 
-@app.delete("/remover/{nome}", response_model=MessageResponse, status_code=200)
-def remover_tarefa(
-    nome: str,
-    user: str = Depends(auth_user),
-):
-    for i, t in enumerate(tarefas):
-        if t.nome == nome:
-            del tarefas[i]
-            return {"message": "Tarefa removida com sucesso."}
-    raise HTTPException(status_code=404, detail="Tarefa não encontrada.")
+    cursor.execute(
+        "UPDATE tarefas SET concluida = 1 WHERE nome = ?",
+        (nome,),
+    )
+
+    if cursor.rowcount == 0:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Tarefa não encontrada.")
+
+    conn.commit()
+
+    cursor.execute(
+        "SELECT nome, descricao, concluida FROM tarefas WHERE nome = ?",
+        (nome,),
+    )
+
+    row = cursor.fetchone()
+    conn.close()
+
+    tarefa = Tarefa(**dict(row))
+
+    return {
+        "message": "Tarefa atualizada com sucesso.",
+        "data": tarefa
+    }
+
+@app.delete("/remover/{nome}", response_model=MessageResponse)
+def remover_tarefa(nome: str, user: str = Depends(auth_user)):
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        "DELETE FROM tarefas WHERE nome = ?",
+        (nome,),
+    )
+
+    if cursor.rowcount == 0:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Tarefa não encontrada.")
+
+    conn.commit()
+    conn.close()
+
+    return {"message": "Tarefa removida com sucesso."}
