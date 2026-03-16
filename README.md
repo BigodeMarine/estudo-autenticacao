@@ -1,6 +1,6 @@
-Estudo de autenticação  
+Estudo de autenticação / (Código refatorado)
 
-API REST desenvolvida em Python + FastAPI com autenticação básica, paginação, ordenação e validação de erros.
+API REST desenvolvida em Python + FastAPI e SQlite para o banco de dados.
 
 Tecnologias utilizadas
 
@@ -14,7 +14,9 @@ Pydantic
 
 Poetry (gerenciamento de dependências)
 
-HTTP Basic Authentication
+HTTP Basic Authentication  
+
+SQlite
 
 Funcionalidades
 
@@ -24,6 +26,7 @@ Funcionalidades
 ✅ Ordenação dinâmica dos resultados  
 ✅ Respostas padronizadas com mensagens de sucesso  
 ✅ Tratamento de erros HTTP  
+✅ Substituindo o uso do dicionário para o armazenamento de dados por um banco de dados SQLite.
 
 🔐 Autenticação
 
