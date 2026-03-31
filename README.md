@@ -59,8 +59,8 @@ A API utiliza HTTP Basic Auth.
 
 Crie um arquivo .env na raiz:
 
-APP_USER=edson
-APP_PASSWORD=123
-DATABASE=/app/data/tarefas.db
+APP_USER=edson  
+APP_PASSWORD=123  
+DATABASE=/app/data/tarefas.db  
 
 Todos os endpoints de tarefas exigem autenticação.
