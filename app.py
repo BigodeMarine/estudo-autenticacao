@@ -4,12 +4,13 @@ from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from pydantic import BaseModel, Field
 import secrets
 import sqlite3
+import os
 
 app = FastAPI(title="API de Tarefas com Auth + Paginação + Ordenação")
 
 security = HTTPBasic()
 
-DATABASE = "tarefas.db"
+DATABASE = os.getenv("DATABASE", "tarefas.db")
 
 def get_connection():
     conn = sqlite3.connect(DATABASE)
@@ -35,7 +36,7 @@ def criar_tabela():
 criar_tabela()
 
 USERS_DB = {
-    "edson": "123",
+    os.getenv("APP_USER"): os.getenv("APP_PASSWORD"),
 }
 
 class Tarefa(BaseModel):
@@ -58,29 +59,22 @@ def validar_credenciais(credentials: HTTPBasicCredentials) -> str:
     username = credentials.username
     password = credentials.password
 
-    if not username or not password:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Credenciais ausentes.",
-            headers={"WWW-Authenticate": "Basic"},
-        )
-
     senha_esperada = USERS_DB.get(username)
-    if senha_esperada is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Usuário ou senha inválidos.",
-            headers={"WWW-Authenticate": "Basic"},
-        )
-    ok_user = secrets.compare_digest(username, username)
-    ok_pass = secrets.compare_digest(password, senha_esperada)
 
-    if not (ok_user and ok_pass):
+    if not username or not password or senha_esperada is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Usuário ou senha inválidos.",
             headers={"WWW-Authenticate": "Basic"},
         )
+
+    if not secrets.compare_digest(password, senha_esperada):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Usuário ou senha inválidos.",
+            headers={"WWW-Authenticate": "Basic"},
+        )
+
     return username
 
 def auth_user(credentials: HTTPBasicCredentials = Depends(security)) -> str:

@@ -1,0 +1,22 @@
+
+services:
+  api:
+    build: .
+    container_name: fastapi_app
+    ports:
+      - "8000:8000"
+
+    volumes:
+      - .:/app
+      - sqlite_data:/app/data
+
+    environment:
+      APP_USER: edson
+      APP_PASSWORD: 123
+      DATABASE: /app/data/tarefas.db
+      ENV: development
+
+    command: uvicorn app:app --host 0.0.0.0 --port 8000 --reload
+
+volumes:
+  sqlite_data:
