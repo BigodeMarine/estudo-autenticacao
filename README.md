@@ -22,7 +22,7 @@ Docker
 
 Docker Compose
 
-Funcionalidades
+Funcionalidades:
 
 ✅ Autenticação básica por usuário e senha  
 ✅ CRUD de tarefas  
