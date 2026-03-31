@@ -57,8 +57,6 @@ docker compose up --build
 
 A API utiliza HTTP Basic Auth.
 
-Usuários de teste:
-
 Crie um arquivo .env na raiz:
 
 APP_USER=edson
